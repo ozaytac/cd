@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cauchy Dağılımı Görselleştiricisi</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .control-group label {
+            margin-bottom: 5px;
+        }
+        input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .visualization {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .histogram {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .histogram-bars {
+            display: flex;
+            align-items: flex-end;
+            height: 150px;
+            gap: 1px;
+        }
+        .bar {
+            flex: 1;
+            background-color: #4CAF50;
+            min-width: 2px;
+        }
+        .stats {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>İST631 - Kuramsal İstatistik Dersi Uygulama Ödevi</h1>
+            <h2>Ara Sınav Ödevi: Cauchy Dağılımı Görselleştiricisi</h2>
+            <h3>Öğretim Üyesi: Doç. Dr. Ayten Yiğiter</h3>
+            <h3>Öğrenci: N23235557 - Mustafa Özaytaç</h3>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Konum Parametresi (θ)</label>
+                <input type="number" id="theta" value="0" step="0.1">
+            </div>
+            <div class="control-group">
+                <label>Ölçek Parametresi (σ)</label>
+                <input type="number" id="sigma" value="3" min="0.1" step="0.1">
+            </div>
+        </div>
+
+        <button id="toggleButton">Simülasyonu Başlat</button>
+
+        <div class="visualization">
+            <h3>Geometrik Gösterim</h3>
+            <svg id="geometricView" width="400" height="400"></svg>
+        </div>
+
+        <div id="histograms"></div>
+
+        <div class="stats">
+            <p>Toplam Örnek Sayısı: <span id="sampleCount">0</span></p>
+            <p>Not: Cauchy dağılımının ağır kuyrukları nedeniyle beklenen değer ve varyans tanımlı değildir.</p>
+        </div>
+    </div>
+
+    <script>
+        const bounds = [5, 10, 30, 50];
+        const MAX_SAMPLES = 1000;
+        let samples = [];
+        let isRunning = false;
+        let animationId;
+
+        const svg = document.getElementById('geometricView');
+        const SCALE = 10;
+        const CENTER_X = 200;
+        const CENTER_Y = 200;
+
+        // Initialize SVG
+        function initSVG() {
+            svg.innerHTML = `
+                <line x1="0" y1="200" x2="400" y2="200" stroke="black" />
+                <line x1="200" y1="0" x2="200" y2="400" stroke="black" />
+            `;
+        }
+
+        function generateSample() {
+            const theta = parseFloat(document.getElementById('theta').value);
+            const sigma = parseFloat(document.getElementById('sigma').value);
+            const angle = (Math.random() - 0.5) * Math.PI;
+            const xIntercept = theta + sigma * Math.tan(angle);
+            return { angle, xIntercept };
+        }
+
+        function updateVisualization() {
+            const theta = parseFloat(document.getElementById('theta').value);
+            const sigma = parseFloat(document.getElementById('sigma').value);
+
+            // Update SVG
+            initSVG();
+            
+            // Add sigma line
+            svg.innerHTML += `
+                <line 
+                    x1="0" 
+                    y1="${CENTER_Y - sigma * SCALE}" 
+                    x2="400" 
+                    y2="${CENTER_Y - sigma * SCALE}" 
+                    stroke="#888" 
+                    stroke-dasharray="4"
+                />
+            `;
+
+            // Add current point and line
+            const sample = generateSample();
+            if (samples.length < MAX_SAMPLES) {
+                samples.push(sample.xIntercept);
+            } else {
+                samples = [...samples.slice(1), sample.xIntercept];
+            }
+
+            svg.innerHTML += `
+                <circle 
+                    cx="${CENTER_X + theta * SCALE}" 
+                    cy="${CENTER_Y - sigma * SCALE}" 
+                    r="4" 
+                    fill="red" 
+                />
+                <line
+                    x1="${CENTER_X + theta * SCALE}"
+                    y1="${CENTER_Y - sigma * SCALE}"
+                    x2="${CENTER_X + sample.xIntercept * SCALE}"
+                    y2="${CENTER_Y}"
+                    stroke="red"
+                    stroke-width="2"
+                />
+                <circle
+                    cx="${CENTER_X + sample.xIntercept * SCALE}"
+                    cy="${CENTER_Y}"
+                    r="4"
+                    fill="blue"
+                />
+            `;
+
+            updateHistograms();
+            document.getElementById('sampleCount').textContent = samples.length;
+
+            if (isRunning) {
+                animationId = requestAnimationFrame(updateVisualization);
+            }
+        }
+
+        function updateHistograms() {
+            const histogramsContainer = document.getElementById('histograms');
+            histogramsContainer.innerHTML = '';
+
+            bounds.forEach(bound => {
+                const boundedSamples = samples.filter(x => x >= -bound && x <= bound);
+                const bins = Array(40).fill(0);
+                const binWidth = (2 * bound) / bins.length;
+
+                boundedSamples.forEach(x => {
+                    const binIndex = Math.floor((x + bound) / binWidth);
+                    if (binIndex >= 0 && binIndex < bins.length) {
+                        bins[binIndex]++;
+                    }
+                });
+
+                const maxCount = Math.max(...bins);
+                const percentage = ((boundedSamples.length / samples.length) * 100).toFixed(1);
+
+                const histogram = document.createElement('div');
+                histogram.className = 'histogram';
+                histogram.innerHTML = `
+                    <h3>Aralık: ±${bound} birim (Örneklerin %${percentage}'i)</h3>
+                    <div class="histogram-bars">
+                        ${bins.map(count => `
+                            <div class="bar" style="height: ${(count / maxCount) * 100}%"></div>
+                        `).join('')}
+                    </div>
+                    <div class="stats">
+                        Aralıktaki örnek sayısı: ${boundedSamples.length}
+                    </div>
+                `;
+
+                histogramsContainer.appendChild(histogram);
+            });
+        }
+
+        document.getElementById('toggleButton').addEventListener('click', function() {
+            isRunning = !isRunning;
+            this.textContent = isRunning ? 'Simülasyonu Durdur' : 'Simülasyonu Başlat';
+            if (isRunning) {
+                updateVisualization();
+            } else {
+                cancelAnimationFrame(animationId);
+            }
+        });
+
+        ['theta', 'sigma'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => {
+                if (!isRunning) {
+                    updateVisualization();
+                }
+            });
+        });
+
+        initSVG();
+        updateVisualization();
+    </script>
+</body>
+</html>
