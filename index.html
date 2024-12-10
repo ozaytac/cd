@@ -4,6 +4,7 @@
     <title>Cauchy Dağılımı Görselleştiricisi</title>
     <meta charset="UTF-8">
     <style>
+        /* Previous styles remain the same */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -48,16 +49,30 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         button:hover {
             background: #45a049;
+        }
+        button.reset {
+            background: #f44336;
+            margin-bottom: 20px;
+        }
+        button.reset:hover {
+            background: #da190b;
         }
         .visualization {
             border: 1px solid #ddd;
             padding: 20px;
             border-radius: 4px;
             margin-bottom: 20px;
+        }
+        .current-values {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-family: monospace;
         }
         .histogram {
             border: 1px solid #ddd;
@@ -103,6 +118,14 @@
         </div>
 
         <button id="toggleButton">Simülasyonu Başlat</button>
+        <button id="resetButton" class="reset">Sıfırla</button>
+
+        <div class="current-values">
+            <h3>Anlık Değerler:</h3>
+            <div id="currentValues">
+                Henüz örnek üretilmedi
+            </div>
+        </div>
 
         <div class="visualization">
             <h3>Geometrik Gösterim</h3>
@@ -123,13 +146,14 @@
         let samples = [];
         let isRunning = false;
         let animationId;
+        let lastAngle = 0;
+        let lastIntercept = 0;
 
         const svg = document.getElementById('geometricView');
         const SCALE = 10;
         const CENTER_X = 200;
         const CENTER_Y = 200;
 
-        // Initialize SVG
         function initSVG() {
             svg.innerHTML = `
                 <line x1="0" y1="200" x2="400" y2="200" stroke="black" />
@@ -142,17 +166,29 @@
             const sigma = parseFloat(document.getElementById('sigma').value);
             const angle = (Math.random() - 0.5) * Math.PI;
             const xIntercept = theta + sigma * Math.tan(angle);
+            lastAngle = angle;
+            lastIntercept = xIntercept;
             return { angle, xIntercept };
+        }
+
+        function updateCurrentValues() {
+            const theta = parseFloat(document.getElementById('theta').value);
+            const sigma = parseFloat(document.getElementById('sigma').value);
+            const angleDegrees = (lastAngle * 180 / Math.PI).toFixed(2);
+            document.getElementById('currentValues').innerHTML = `
+                θ (theta) = ${theta}<br>
+                σ (sigma) = ${sigma}<br>
+                Açı = ${angleDegrees}°<br>
+                x-kesişimi = ${lastIntercept.toFixed(3)}
+            `;
         }
 
         function updateVisualization() {
             const theta = parseFloat(document.getElementById('theta').value);
             const sigma = parseFloat(document.getElementById('sigma').value);
 
-            // Update SVG
             initSVG();
             
-            // Add sigma line
             svg.innerHTML += `
                 <line 
                     x1="0" 
@@ -164,7 +200,6 @@
                 />
             `;
 
-            // Add current point and line
             const sample = generateSample();
             if (samples.length < MAX_SAMPLES) {
                 samples.push(sample.xIntercept);
@@ -195,6 +230,7 @@
                 />
             `;
 
+            updateCurrentValues();
             updateHistograms();
             document.getElementById('sampleCount').textContent = samples.length;
 
@@ -240,6 +276,19 @@
             });
         }
 
+        function resetSimulation() {
+            isRunning = false;
+            samples = [];
+            lastAngle = 0;
+            lastIntercept = 0;
+            document.getElementById('toggleButton').textContent = 'Simülasyonu Başlat';
+            document.getElementById('currentValues').innerHTML = 'Henüz örnek üretilmedi';
+            cancelAnimationFrame(animationId);
+            initSVG();
+            updateHistograms();
+            document.getElementById('sampleCount').textContent = '0';
+        }
+
         document.getElementById('toggleButton').addEventListener('click', function() {
             isRunning = !isRunning;
             this.textContent = isRunning ? 'Simülasyonu Durdur' : 'Simülasyonu Başlat';
@@ -249,6 +298,8 @@
                 cancelAnimationFrame(animationId);
             }
         });
+
+        document.getElementById('resetButton').addEventListener('click', resetSimulation);
 
         ['theta', 'sigma'].forEach(id => {
             document.getElementById(id).addEventListener('change', () => {
